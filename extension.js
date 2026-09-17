@@ -28,6 +28,18 @@ const WINDOW_TIMEOUT = 10000;
 const SUPPORTED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tif', 'tiff'];
 
 export default class ScreenSaverExtension extends Extension {
+    _backgroundCreated = false;
+    _wrapperActors = [];
+    _windowActor = null;
+    _window = null;
+    _promptShown = false;
+    _injectionManager = null;
+    _player = null;
+    _injectRetryId = 0;
+    _blurEffectTimeoutId = 0;
+    _loginManager = null;
+    _settings = null;
+
     enable() {
         this._resetLockState();
         this._settings = this.getSettings();
@@ -291,6 +303,11 @@ export default class ScreenSaverExtension extends Extension {
             const radius = this._promptSettings[Keys.PROMPT_BLUR_RADIUS];
             const brightness = radius ? this._promptSettings[Keys.PROMPT_BLUR_BRIGHTNESS] : 1;
 
+            if (this._blurEffectTimeoutId) {
+                GLib.source_remove(this._blurEffectTimeoutId);
+                this._blurEffectTimeoutId = 0;
+            }
+
             this._blurEffectTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 10, () => {
                 this._wrapperActors.forEach(actor => {
                     actor.ease_property('@effects.lockscreen-extension-blur.radius', radius, {
@@ -303,6 +320,7 @@ export default class ScreenSaverExtension extends Extension {
                     });
                 });
 
+                this._blurEffectTimeoutId = 0;
                 return GLib.SOURCE_REMOVE;
             });
         }
@@ -486,7 +504,7 @@ export default class ScreenSaverExtension extends Extension {
             actor.remove_effect_by_name('lockscreen-extension-desaturate');
             actor.destroy();
         });
-        this._wrapperActors = {};
+        this._wrapperActors = [];
         this._settings = null;
     }
 }

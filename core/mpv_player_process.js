@@ -287,6 +287,11 @@ export class MpvPlayerProcess {
 
     async waitForWindow(timeoutMs) {
         return new Promise((resolve, reject) => {
+            if (this._winTimeoutId !== null) {
+                GLib.source_remove(this._winTimeoutId);
+                this._winTimeoutId = null;
+            }
+
             global.window_manager.connectObject(
                 'map',
                 (_wm, windowActor) => {

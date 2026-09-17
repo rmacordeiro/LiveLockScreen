@@ -1,5 +1,5 @@
 {
-  "description": "A GNOME Shell extension that rotates images as your lock screen background.",
+  "description": "A fork of LiveLockScreen that rotates images as your lock screen background.",
   "name": "ScreenSaver",
   "session-modes": [
     "unlock-dialog"
@@ -17,5 +17,5 @@
   },
   "url": "https://github.com/rmacordeiro/ScreenSaver",
   "uuid": "screensaver@rmacordeiro",
-  "version-name": "1.0.0"
+  "version-name": "1.0.1"
 }
