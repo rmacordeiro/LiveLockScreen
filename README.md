@@ -11,6 +11,8 @@
 
 # ScreenSaver
 
+Current release: v1.0.1
+
 A GNOME Shell extension that rotates images as your lock screen background.
 
 ScreenSaver focuses on a single goal: showing still images on the lock screen.
