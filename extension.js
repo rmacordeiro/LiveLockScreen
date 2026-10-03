@@ -242,20 +242,29 @@ export default class ScreenSaverExtension extends Extension {
     }
 
     async _waitForFullLoad() {
-        while (!Main.screenShield._dialog || this._player.w === 0) {
+        while (true) {
+            const dialog = Main.screenShield?._dialog;
+            const ready = !!dialog && !!this._player && this._player.w > 0;
+            if (ready)
+                return dialog;
+
+            if (!this._player)
+                return null;
+
             if (this._injectAttempts >= MAX_DIALOG_INJECT_ATTEMPTS)
                 throw new Error(`_dialog never appeared after ${MAX_DIALOG_INJECT_ATTEMPTS} attempts`);
 
             this._injectAttempts++;
             await sleep(DIALOG_INJECT_INTERVAL);
         }
-
-        this._injectAttempts = 0;
-        return Main.screenShield._dialog;
     }
 
     async _injectIntoDialog() {
         const dialog = await this._waitForFullLoad();
+        if (!dialog) {
+            logWarn('Lock screen dialog is not available; skipping injection');
+            return;
+        }
 
         this._injectionManager.overrideMethod(dialog, '_createBackground', original => {
             const self = this;
@@ -279,19 +288,34 @@ export default class ScreenSaverExtension extends Extension {
             };
         });
 
-        const gtype = dialog._swipeTracker.constructor.$gtype;
-        const swipeSignalId = GObject.signal_lookup('end', gtype);
-        dialog._swipeTracker.disconnect(swipeSignalId);
+        const swipeTracker = dialog._swipeTracker;
+        if (swipeTracker) {
+            const gtype = swipeTracker.constructor?.$gtype;
+            if (gtype) {
+                const swipeSignalId = GObject.signal_lookup('end', gtype);
+                if (swipeSignalId)
+                    swipeTracker.disconnect(swipeSignalId);
 
-        dialog._swipeTracker.connectObject('end', (...args) => {
-            dialog._swipeEnd(...args);
-            if (dialog._activePage === dialog._clock)
-                this._onPromptHide();
-            else
-                this._onPromptShow();
-        }, this);
+                swipeTracker.connectObject('end', (...args) => {
+                    dialog._swipeEnd(...args);
+                    if (dialog._activePage === dialog._clock)
+                        this._onPromptHide();
+                    else
+                        this._onPromptShow();
+                }, this);
+            } else {
+                logWarn('Lock screen swipe tracker is missing GType; continuing without swipe hook');
+            }
+        } else {
+            logWarn('Lock screen swipe tracker is not ready yet; continuing without swipe hook');
+        }
 
         dialog._updateBackgrounds();
+
+        if (!this._backgroundCreated && dialog._backgroundGroup && dialog._backgroundGroup.get_n_children() === 0) {
+            for (let i = 0; i < Main.layoutManager.monitors.length; i++)
+                this._handleMonitor(i);
+        }
     }
 
     _onPromptShow() {
@@ -369,6 +393,9 @@ export default class ScreenSaverExtension extends Extension {
     }
 
     _handleMonitor(monitorIndex) {
+        if (!Main.screenShield?._dialog)
+            return;
+
         if (this._player.shouldResize)
             this._window.move_resize_frame(true, 0, 0, this._player.w, this._player.h);
 
@@ -482,7 +509,7 @@ export default class ScreenSaverExtension extends Extension {
         }
         this._injectAttempts = 0;
 
-        Main.screenShield._dialog._swipeTracker?.disconnectObject(this);
+        Main.screenShield?._dialog?._swipeTracker?.disconnectObject(this);
 
         if (this._windowActor)
             this._windowActor.hide();
