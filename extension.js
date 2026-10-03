@@ -511,8 +511,15 @@ export default class ScreenSaverExtension extends Extension {
 
         Main.screenShield?._dialog?._swipeTracker?.disconnectObject(this);
 
-        if (this._windowActor)
+        if (this._windowActor) {
+            const parent = this._windowActor.get_parent();
+            if (parent)
+                parent.remove_child(this._windowActor);
             this._windowActor.hide();
+            this._windowActor.destroy();
+            this._windowActor = null;
+        }
+        this._window = null;
 
         this._player?.destroy();
         this._player = null;
@@ -526,6 +533,9 @@ export default class ScreenSaverExtension extends Extension {
         this._loginManager?.disconnectObject(this);
 
         Object.values(this._wrapperActors).forEach(actor => {
+            const parent = actor.get_parent();
+            if (parent)
+                parent.remove_child(actor);
             actor.disconnectObject(this);
             actor.remove_effect_by_name('lockscreen-extension-blur');
             actor.remove_effect_by_name('lockscreen-extension-desaturate');
